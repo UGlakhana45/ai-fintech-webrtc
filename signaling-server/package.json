@@ -4,6 +4,7 @@
   "private": true,
   "type": "commonjs",
   "scripts": {
+    "build": "node -e \"require('fs').accessSync('server.js')\"",
     "start": "node server.js"
   },
   "dependencies": {

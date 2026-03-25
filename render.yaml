@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: ai-fintech-webrtc-signaling
+    runtime: node
+    rootDir: signaling-server
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_VERSION
+        value: 22.22.0

@@ -66,6 +66,17 @@ For other devices on your LAN: `npm run dev:lan`, set `NEXT_PUBLIC_SIGNALING_URL
 Use any long-lived Node host. Examples:
 
 - **Railway / Render / Fly.io**: Node start command `node server.js`, set `PORT` from the platform, set `SIGNALING_CORS_ORIGIN` to your Vercel URL.
+
+### Render (`signaling-server` in this monorepo)
+
+1. **New Web Service** → connect this repo → branch you use for deploys.
+2. **Root directory**: `signaling-server`.
+3. **Build command**: `npm install` (or `npm install && npm run build` — a small `build` script is included so this passes).
+4. **Start command**: `npm start`.
+5. Set **`SIGNALING_CORS_ORIGIN`** to `https://<your-vercel-app>.vercel.app`.
+6. After deploy, use the service **HTTPS URL** as **`NEXT_PUBLIC_SIGNALING_URL`** on Vercel.
+
+Optional: `render.yaml` in the repo root configures the same defaults for [Render Blueprints](https://docs.render.com/docs/infrastructure-as-code).
 - **HTTPS**: Enable the platform’s HTTPS URL and point `NEXT_PUBLIC_SIGNALING_URL` at it.
 
 Health check: `GET /health` → `{ "ok": true }`.

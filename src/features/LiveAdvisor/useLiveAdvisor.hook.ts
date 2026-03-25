@@ -365,10 +365,13 @@ export function useLiveAdvisor(): UseLiveAdvisorResult {
     });
 
     const socket = io(url, {
-      transports: ["polling", "websocket"],
-      reconnectionAttempts: 12,
-      reconnectionDelay: 1000,
-      timeout: 20000,
+      path: "/socket.io",
+      transports: ["websocket", "polling"],
+      reconnectionAttempts: 15,
+      reconnectionDelay: 1500,
+      timeout: 30000,
+      upgrade: true,
+      rememberUpgrade: true,
     });
     socketRef.current = socket;
 

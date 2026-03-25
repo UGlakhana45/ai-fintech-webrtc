@@ -81,6 +81,14 @@ Optional: `render.yaml` in the repo root configures the same defaults for [Rende
 
 Health check: `GET /health` → `{ "ok": true }`.
 
+### Signaling shows “xhr poll error” (Socket.io)
+
+1. **`SIGNALING_CORS_ORIGIN` on Render** must match your **exact** dashboard origin: `https://your-app.vercel.app` — **no trailing slash**, and the same host you open in the browser (not `www` vs non-`www` mixed up).
+2. **`NEXT_PUBLIC_SIGNALING_URL` on Vercel** should be `https://your-service.onrender.com` with **no trailing slash**.
+3. **Redeploy both** Render and Vercel after changing env vars.
+4. **Render free tier** may sleep; the first connection after idle can fail — retry once the service is warm.
+5. If it still fails, temporarily set **`SIGNALING_CORS_ORIGIN`** to **`*`** on Render (dev only) to confirm the issue is CORS, then tighten back to your Vercel URL.
+
 ## Open source
 
 - Copy **`.env.example`** and **`signaling-server/env.example`**; do **not** commit real URLs or tokens.

@@ -6,29 +6,67 @@ const { Server } = require("socket.io");
 const PORT = Number(process.env.PORT) || 3001;
 const HOST = process.env.HOST?.trim() || "0.0.0.0";
 
-function corsOriginOption() {
-  const raw = process.env.SIGNALING_CORS_ORIGIN?.trim();
-  if (!raw) {
-    return true;
-  }
-  const list = raw.split(",").map((s) => s.trim()).filter(Boolean);
-  if (list.includes("*")) {
-    return true;
-  }
-  return list.length === 1 ? list[0] : list;
+function normalizeOrigin(origin) {
+  if (!origin || typeof origin !== "string") return "";
+  return origin.trim().replace(/\/+$/, "");
 }
 
-const corsValue = corsOriginOption();
+function makeCorsOptions() {
+  const raw = process.env.SIGNALING_CORS_ORIGIN?.trim();
+  if (!raw) {
+    return {
+      origin: true,
+      methods: ["GET", "POST", "OPTIONS"],
+      preflightContinue: false,
+      optionsSuccessStatus: 204,
+    };
+  }
+  const list = raw
+    .split(",")
+    .map((s) => normalizeOrigin(s))
+    .filter(Boolean);
+  if (list.includes("*")) {
+    return {
+      origin: true,
+      methods: ["GET", "POST", "OPTIONS"],
+      preflightContinue: false,
+      optionsSuccessStatus: 204,
+    };
+  }
+  return {
+    origin(origin, callback) {
+      if (!origin) {
+        callback(null, true);
+        return;
+      }
+      const n = normalizeOrigin(origin);
+      const ok = list.includes(n);
+      callback(null, ok);
+    },
+    methods: ["GET", "POST", "OPTIONS"],
+    preflightContinue: false,
+    optionsSuccessStatus: 204,
+  };
+}
+
+const corsOptions = makeCorsOptions();
 
 const app = express();
-app.use(cors({ origin: corsValue }));
+app.set("trust proxy", 1);
+app.use(cors(corsOptions));
 app.get("/health", (_req, res) => {
   res.status(200).json({ ok: true });
 });
 
 const server = http.createServer(app);
 const io = new Server(server, {
-  cors: { origin: corsValue, methods: ["GET", "POST"] },
+  cors: {
+    origin: corsOptions.origin,
+    methods: ["GET", "POST", "OPTIONS"],
+  },
+  connectTimeout: 45000,
+  pingTimeout: 30000,
+  pingInterval: 25000,
 });
 
 const peers = new Map();

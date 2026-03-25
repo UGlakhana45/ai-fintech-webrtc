@@ -1,5 +1,9 @@
 import { DEFAULT_SIGNALING_URL } from "./webrtc.types";
 
+function normalizeSignalingBase(url: string): string {
+  return url.trim().replace(/\/+$/, "");
+}
+
 function envPointsToLoopback(url: string): boolean {
   try {
     const u = new URL(url);
@@ -14,10 +18,13 @@ function signalingPort(): string {
 }
 
 export function resolveSignalingUrl(): string {
-  const envUrl = process.env.NEXT_PUBLIC_SIGNALING_URL?.trim() ?? "";
+  const envUrl = normalizeSignalingBase(
+    process.env.NEXT_PUBLIC_SIGNALING_URL?.trim() ?? "",
+  );
 
   if (typeof window === "undefined") {
-    return envUrl || DEFAULT_SIGNALING_URL;
+    const v = envUrl || DEFAULT_SIGNALING_URL;
+    return normalizeSignalingBase(v);
   }
 
   const { hostname, protocol } = window.location;
@@ -33,10 +40,12 @@ export function resolveSignalingUrl(): string {
     !pageIsLoopback &&
     (!envUrl || envPointsToLoopback(envUrl))
   ) {
-    return `http://${hostname}:${signalingPort()}`;
+    return normalizeSignalingBase(
+      `http://${hostname}:${signalingPort()}`,
+    );
   }
 
-  return envUrl || DEFAULT_SIGNALING_URL;
+  return normalizeSignalingBase(envUrl || DEFAULT_SIGNALING_URL);
 }
 
 export function mixedContentHelpMessage(

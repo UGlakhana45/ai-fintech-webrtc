@@ -39,6 +39,8 @@ export interface IceCandidatePayload {
 
 export interface UseLiveAdvisorResult {
   signalingConnected: boolean;
+  signalingTargetUrl: string;
+  signalingLastError: string | null;
   mySocketId: string | null;
   displayLabel: string;
   setDisplayLabel: (value: string) => void;

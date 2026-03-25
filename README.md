@@ -1,36 +1,83 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# AI Fintech Dashboard + Live Advisor (WebRTC)
 
-## Getting Started
+Next.js dashboard with mocked financial data and a **Live Advisor** panel that uses **WebRTC** and a **separate Socket.io signaling server**.
 
-First, run the development server:
+Forks and contributors run their **own** signaling deployment and set environment variables. **No secrets belong in the repo**—copy `.env.example` to `.env.local` and fill in values locally; on Vercel, set the same keys in the project dashboard.
+
+## Architecture
+
+| Part | Stack | Hosting |
+|------|--------|---------|
+| Dashboard | Next.js (App Router), TypeScript, Tailwind | **Vercel** (recommended) |
+| Signaling | Node.js, Express, Socket.io | **Not** on Vercel serverless—use Railway, Render, Fly.io, a VPS, or HTTPS tunnel |
+
+The browser **must** load the app and connect to signaling with compatible protocols: **HTTPS pages require `https://` (or WSS) signaling** (mixed content rules).
+
+## Environment variables (Next.js / Vercel)
+
+Create `.env.local` from `.env.example` for local development. On **Vercel**: **Settings → Environment Variables** (Production / Preview as needed).
+
+| Name | Required on Vercel | Description |
+|------|---------------------|-------------|
+| `NEXT_PUBLIC_SIGNALING_URL` | **Yes** | Public URL of your Socket.io server, **`https://…`** when the site is on HTTPS. Example: `https://signals.myapp.com` |
+| `NEXT_PUBLIC_SIGNALING_PORT` | No | Default `3001`. Only used for **LAN HTTP** dev when the URL is inferred from the current host. |
+| `ALLOWED_DEV_ORIGINS` | No | Comma-separated hostnames (no `http://`) for Next **dev** HMR when opening the app by LAN IP. Not needed for production. |
+
+After changing env vars on Vercel, **redeploy** so the client bundle picks up `NEXT_PUBLIC_*` values.
+
+## Environment variables (signaling server)
+
+Copy `signaling-server/env.example` to `signaling-server/.env` on the machine or platform that runs the server.
+
+| Name | Description |
+|------|-------------|
+| `PORT` | Listen port (default `3001`). |
+| `HOST` | Bind address (default `0.0.0.0`). |
+| `SIGNALING_CORS_ORIGIN` | Your **Next.js origin(s)**, comma-separated, e.g. `https://your-app.vercel.app`. For local experiments only, `*` allows any origin (do not use in production). |
+
+TLS usually terminates at your host or reverse proxy; the app URL Socket.io clients use should be **`https://`** if the dashboard is on HTTPS.
+
+## Local development
 
 ```bash
+npm install
+cp .env.example .env.local
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+```bash
+cd signaling-server && npm install && npm start
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+For other devices on your LAN: `npm run dev:lan`, set `NEXT_PUBLIC_SIGNALING_URL` to `http://<your-computer-ip>:3001`, and `ALLOWED_DEV_ORIGINS` to that IP. See `.env.example`.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Deploy dashboard to Vercel
 
-## Learn More
+1. Push this repo to GitHub (or GitLab / Bitbucket).
+2. Import the repo in [Vercel](https://vercel.com).
+3. Set **Environment Variables**:
+   - `NEXT_PUBLIC_SIGNALING_URL` = `https://<your-signaling-host>` (must match **HTTPS** if the site is HTTPS).
+4. Deploy.
 
-To learn more about Next.js, take a look at the following resources:
+`vercel.json` pins the **Next.js** framework; builds use `npm run build` by default.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Deploy signaling (for everyone using your fork)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Use any long-lived Node host. Examples:
 
-## Deploy on Vercel
+- **Railway / Render / Fly.io**: Node start command `node server.js`, set `PORT` from the platform, set `SIGNALING_CORS_ORIGIN` to your Vercel URL.
+- **HTTPS**: Enable the platform’s HTTPS URL and point `NEXT_PUBLIC_SIGNALING_URL` at it.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Health check: `GET /health` → `{ "ok": true }`.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Open source
+
+- Copy **`.env.example`** and **`signaling-server/env.example`**; do **not** commit real URLs or tokens.
+- Licensed under **MIT** (see `LICENSE`).
+
+## Scripts
+
+- `npm run dev` — Next dev (localhost).
+- `npm run dev:lan` — Next dev bound to `0.0.0.0` for LAN testing.
+- `npm run build` / `npm run start` — production Next (e.g. self-hosted).
+- `signaling-server`: `npm start` — signaling server.

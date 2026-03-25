@@ -4,6 +4,7 @@ const cors = require("cors");
 const { Server } = require("socket.io");
 
 const PORT = Number(process.env.PORT) || 3001;
+const HOST = process.env.HOST?.trim() || "0.0.0.0";
 
 function corsOriginOption() {
   const raw = process.env.SIGNALING_CORS_ORIGIN?.trim();
@@ -11,6 +12,9 @@ function corsOriginOption() {
     return true;
   }
   const list = raw.split(",").map((s) => s.trim()).filter(Boolean);
+  if (list.includes("*")) {
+    return true;
+  }
   return list.length === 1 ? list[0] : list;
 }
 
@@ -124,6 +128,6 @@ io.on("connection", (socket) => {
   });
 });
 
-server.listen(PORT, () => {
-  console.log(`Signaling server listening on port ${PORT}`);
+server.listen(PORT, HOST, () => {
+  console.log(`Signaling server listening on http://${HOST}:${PORT}`);
 });

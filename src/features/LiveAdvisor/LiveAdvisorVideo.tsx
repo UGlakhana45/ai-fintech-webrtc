@@ -12,6 +12,8 @@ export function LiveAdvisorVideo() {
 
   const {
     signalingConnected,
+    signalingTargetUrl,
+    signalingLastError,
     mySocketId,
     displayLabel,
     setDisplayLabel,
@@ -75,11 +77,23 @@ export function LiveAdvisorVideo() {
             device to call, or use the public test room on two clients.
           </p>
         </div>
-        <p
-          className={`text-xs font-medium ${signalingConnected ? "text-emerald-400" : "text-amber-300"}`}
-        >
-          Registry: {signalingConnected ? "connected" : "connecting…"}
-        </p>
+        <div className="text-right text-xs">
+          <p
+            className={`font-medium ${signalingConnected ? "text-emerald-400" : "text-amber-300"}`}
+          >
+            Registry: {signalingConnected ? "connected" : "connecting…"}
+          </p>
+          {signalingTargetUrl ? (
+            <p className="mt-1 max-w-[220px] break-all font-mono text-[10px] text-zinc-500">
+              {signalingTargetUrl}
+            </p>
+          ) : null}
+          {signalingLastError ? (
+            <p className="mt-1 max-w-[220px] text-[10px] text-rose-300">
+              {signalingLastError}
+            </p>
+          ) : null}
+        </div>
       </header>
 
       {showInsecureMediaWarning ? (

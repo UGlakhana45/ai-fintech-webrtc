@@ -3,7 +3,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { io, type Socket } from "socket.io-client";
 import { acquireCallMedia } from "./webrtc.media.utils";
-import { resolveSignalingUrl } from "./webrtc.signaling.utils";
+import {
+  mixedContentHelpMessage,
+  resolveSignalingUrl,
+} from "./webrtc.signaling.utils";
 import {
   DEFAULT_ADVISOR_ROOM_ID,
   type CallInvitePayload,
@@ -19,8 +22,18 @@ const ICE_SERVERS: RTCConfiguration = {
   iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
 };
 
+function connectErrorMessage(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  if (typeof err === "string") return err;
+  return "Signaling connection failed";
+}
+
 export function useLiveAdvisor(): UseLiveAdvisorResult {
   const [signalingConnected, setSignalingConnected] = useState(false);
+  const [signalingTargetUrl, setSignalingTargetUrl] = useState("");
+  const [signalingLastError, setSignalingLastError] = useState<string | null>(
+    null,
+  );
   const [mySocketId, setMySocketId] = useState<string | null>(null);
   const [allPeers, setAllPeers] = useState<RegisteredPeer[]>([]);
   const [displayLabel, setDisplayLabel] = useState("");
@@ -323,14 +336,44 @@ export function useLiveAdvisor(): UseLiveAdvisorResult {
   }, []);
 
   useEffect(() => {
-    const socket = io(resolveSignalingUrl(), {
-      transports: ["websocket", "polling"],
-      reconnectionAttempts: 8,
-      reconnectionDelay: 800,
+    const url = resolveSignalingUrl();
+
+    if (!url) {
+      const rafMissing = requestAnimationFrame(() => {
+        setSignalingTargetUrl("");
+        setSignalingLastError(
+          "NEXT_PUBLIC_SIGNALING_URL is missing. On Vercel: Project → Settings → Environment Variables. Use your public HTTPS signaling server URL (see README.md).",
+        );
+      });
+      return () => cancelAnimationFrame(rafMissing);
+    }
+
+    if (typeof window !== "undefined") {
+      const blocked = mixedContentHelpMessage(window.location.href, url);
+      if (blocked) {
+        const rafMixed = requestAnimationFrame(() => {
+          setSignalingTargetUrl(url);
+          setSignalingLastError(blocked);
+        });
+        return () => cancelAnimationFrame(rafMixed);
+      }
+    }
+
+    const raf = requestAnimationFrame(() => {
+      setSignalingTargetUrl(url);
+      setSignalingLastError(null);
+    });
+
+    const socket = io(url, {
+      transports: ["polling", "websocket"],
+      reconnectionAttempts: 12,
+      reconnectionDelay: 1000,
+      timeout: 20000,
     });
     socketRef.current = socket;
 
     const onConnect = () => {
+      setSignalingLastError(null);
       setSignalingConnected(true);
       setMySocketId(socket.id ?? null);
       socket.emit("register", {
@@ -368,7 +411,9 @@ export function useLiveAdvisor(): UseLiveAdvisorResult {
     };
 
     const onConnectError = (err: Error) => {
-      setError(err.message || "Signaling connection failed");
+      const msg = connectErrorMessage(err);
+      setSignalingLastError(msg);
+      setError(msg);
       setStatus("error");
     };
 
@@ -381,6 +426,7 @@ export function useLiveAdvisor(): UseLiveAdvisorResult {
     socket.on("connect_error", onConnectError);
 
     return () => {
+      cancelAnimationFrame(raf);
       socket.off("connect", onConnect);
       socket.off("disconnect", onDisconnect);
       socket.off("peers:updated", onPeersUpdated);
@@ -397,6 +443,8 @@ export function useLiveAdvisor(): UseLiveAdvisorResult {
 
   return {
     signalingConnected,
+    signalingTargetUrl,
+    signalingLastError,
     mySocketId,
     displayLabel,
     setDisplayLabel,

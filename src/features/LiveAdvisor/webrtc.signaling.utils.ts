@@ -24,9 +24,37 @@ export function resolveSignalingUrl(): string {
   const pageIsLoopback =
     hostname === "localhost" || hostname === "127.0.0.1";
 
-  if (!pageIsLoopback && (!envUrl || envPointsToLoopback(envUrl))) {
-    return `${protocol}//${hostname}:${signalingPort()}`;
+  if (protocol === "https:" && !pageIsLoopback && !envUrl) {
+    return "";
+  }
+
+  if (
+    protocol === "http:" &&
+    !pageIsLoopback &&
+    (!envUrl || envPointsToLoopback(envUrl))
+  ) {
+    return `http://${hostname}:${signalingPort()}`;
   }
 
   return envUrl || DEFAULT_SIGNALING_URL;
+}
+
+export function mixedContentHelpMessage(
+  pageHref: string,
+  signalingUrl: string,
+): string | null {
+  try {
+    const page = new URL(pageHref);
+    const sig = new URL(signalingUrl);
+    if (page.protocol === "https:" && sig.protocol === "http:") {
+      return (
+        "This site is HTTPS but signaling is HTTP (mixed content). " +
+        "Set NEXT_PUBLIC_SIGNALING_URL to an https:// URL. Deploy signaling with TLS (Railway, Render, Fly, Cloudflare Tunnel). " +
+        "See README.md."
+      );
+    }
+  } catch {
+    return null;
+  }
+  return null;
 }
